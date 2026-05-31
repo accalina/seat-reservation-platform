@@ -11,10 +11,10 @@ sqlite.exec(`
 `)
 
 const hasMigrationBeenApplied = (name: string): boolean => {
-  const result = sqlite
+  const rows = sqlite
     .query(`SELECT COUNT(*) as count FROM _migrations WHERE name = ?`)
-    .get(name) as { count: number } | undefined
-  return (result?.count ?? 0) > 0
+    .all(name) as { count: number }[]
+  return rows.length > 0 && rows[0].count > 0
 }
 
 const applyMigration = (name: string, sql: string) => {
@@ -25,32 +25,37 @@ const applyMigration = (name: string, sql: string) => {
 
   console.log(`  📦 Applying ${name}...`)
   sqlite.exec(sql)
-  sqlite.run(`INSERT INTO _migrations (name) VALUES (?)`, [name])
+  // Force WAL checkpoint to ensure all tables are persisted
+  sqlite.exec('PRAGMA wal_checkpoint(TRUNCATE)')
+  sqlite.exec(`INSERT INTO _migrations (name) VALUES ('${name}')`)
   console.log(`  ✅ ${name} applied`)
 }
 
-// Migration 001: Create core tables
+// Migration 001: Create core tables (split into individual statements for reliability)
 applyMigration('001_create_tables', `
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
-  );
-
+  )
+`)
+applyMigration('001b_create_sessions', `
   CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     expires_at INTEGER NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
-  );
-
+  )
+`)
+applyMigration('001c_create_seats', `
   CREATE TABLE IF NOT EXISTS seats (
     id INTEGER PRIMARY KEY,
     label TEXT NOT NULL,
     version INTEGER NOT NULL DEFAULT 1
-  );
-
+  )
+`)
+applyMigration('001d_create_reservations', `
   CREATE TABLE IF NOT EXISTS reservations (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -58,7 +63,7 @@ applyMigration('001_create_tables', `
     status TEXT NOT NULL DEFAULT 'confirmed',
     payment_id TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
-  );
+  )
 `)
 
 // Migration 002: Add indexes for performance

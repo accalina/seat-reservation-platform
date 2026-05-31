@@ -9,6 +9,10 @@ import { seatsRoutes } from './routes/seats'
 import { paymentRoutes } from './routes/payment'
 import { reservationRoutes } from './routes/reservation'
 
+// Run database migrations and seed on startup
+import './db/migrate'
+import './db/seed'
+
 const app = new Elysia()
   .use(requestLogger)
   .use(cors({ origin: env.FRONTEND_URL, credentials: true }))

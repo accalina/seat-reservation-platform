@@ -11,9 +11,8 @@ import { logger } from '../utils/logger'
 
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000
 
-export const publicAuthRoutes = new Elysia({ prefix: '/auth' })
-  .use(
-    rateLimit({
+const rateLimitMiddleware = process.env.NODE_ENV !== 'test'
+  ? rateLimit({
       duration: 60000,
       max: 10,
       scoping: 'scoped',
@@ -21,8 +20,11 @@ export const publicAuthRoutes = new Elysia({ prefix: '/auth' })
         JSON.stringify({ error: 'Too many requests. Try again later.' }),
         { status: 429, headers: { 'Content-Type': 'application/json' } },
       ),
-    }),
-  )
+    })
+  : (app: Elysia) => app
+
+export const publicAuthRoutes = new Elysia({ prefix: '/auth' })
+  .use(rateLimitMiddleware)
   // POST /api/auth/register
   .post(
     '/register',

@@ -27,15 +27,16 @@ export const reservationRoutes = new Elysia({ prefix: '/reservation' })
     try {
       sqlite.exec('BEGIN IMMEDIATE')
 
-      const lockResult = sqlite.query(
-        'UPDATE seats SET version = version + 1 WHERE id = ?'
-      ).run(seatId)
-
-      if (lockResult.changes === 0) {
+      // Check seat exists (query().run() returns undefined in bun 1.0.0, so use SELECT instead)
+      const seat = sqlite.query('SELECT id FROM seats WHERE id = ?').get(seatId) as { id: number } | undefined
+      if (!seat) {
         sqlite.exec('ROLLBACK')
         set.status = 404
         return { error: 'Seat not found' }
       }
+
+      // Lock the seat row by bumping version (return value is unreliable in bun 1.0.0)
+      sqlite.run('UPDATE seats SET version = version + 1 WHERE id = ?', seatId)
 
       const existingReservation = sqlite.query(
         `SELECT 1 FROM reservations
@@ -92,11 +93,20 @@ export const reservationRoutes = new Elysia({ prefix: '/reservation' })
         return { error: 'Seat not found' }
       }
 
-      const updated = sqlite.query(
-        'UPDATE seats SET version = version + 1 WHERE id = ? AND version = ?'
-      ).run(seatId, seat.version)
+      // Attempt version-checked update (run() returns undefined in bun 1.0.0, so re-SELECT to verify)
+      sqlite.run(
+        'UPDATE seats SET version = version + 1 WHERE id = ? AND version = ?',
+        seatId,
+        seat.version
+      )
 
-      if (updated.changes === 0) {
+      // Verify the update actually changed the version (concurrent modification check)
+      const updatedSeat = sqlite.query(
+        'SELECT version FROM seats WHERE id = ?'
+      ).get(seatId) as { version: number }
+
+      if (updatedSeat.version === seat.version) {
+        // Version didn't change — someone else modified it first
         sqlite.exec('ROLLBACK')
         set.status = 409
         return { error: 'Concurrent modification, please retry' }

@@ -1,0 +1,7 @@
+[test]
+# Exclude Playwright E2E tests (use `@playwright/test` framework, not `bun:test`)
+# Exclude integration tests that require a running server
+exclude = [
+  "**/e2e/**",
+  "**/tests/integration/**",
+]

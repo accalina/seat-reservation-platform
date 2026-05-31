@@ -4,15 +4,13 @@ import { Database } from 'bun:sqlite'
 const db = new Database(':memory:')
 db.exec('PRAGMA foreign_keys=ON;')
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS seats (id INTEGER PRIMARY KEY, label TEXT, version INTEGER DEFAULT 1);
-  CREATE TABLE IF NOT EXISTS reservations (
-    id TEXT PRIMARY KEY, user_id TEXT, seat_id INTEGER, 
-    status TEXT DEFAULT 'confirmed', payment_id TEXT
-  );
-  INSERT INTO seats (id, label) VALUES (1, 'Test Seat A');
-  INSERT INTO seats (id, label) VALUES (2, 'Test Seat B');
-`)
+db.exec('CREATE TABLE IF NOT EXISTS seats (id INTEGER PRIMARY KEY, label TEXT, version INTEGER DEFAULT 1)')
+db.exec(`CREATE TABLE IF NOT EXISTS reservations (
+  id TEXT PRIMARY KEY, user_id TEXT, seat_id INTEGER,
+  status TEXT DEFAULT 'confirmed', payment_id TEXT
+)`)
+db.exec("INSERT INTO seats (id, label) VALUES (1, 'Test Seat A')")
+db.exec("INSERT INTO seats (id, label) VALUES (2, 'Test Seat B')")
 
 beforeEach(() => {
   db.exec('DELETE FROM reservations')
@@ -24,12 +22,14 @@ function finalizeReservation(seatId: number, userId: string, paymentId: string):
   try {
     db.exec('BEGIN IMMEDIATE')
 
-    const lockResult = db.query('UPDATE seats SET version = version + 1 WHERE id = ?').run(seatId)
-    if (lockResult.changes === 0) {
+    // Check if seat exists by SELECT (query().run() returns undefined in bun 1.0.0)
+    const seat = db.query('SELECT id, version FROM seats WHERE id = ?').get(seatId) as { id: number; version: number } | undefined
+    if (!seat) {
       db.exec('ROLLBACK')
       return { success: false, error: 'Seat not found' }
     }
 
+    // Check if seat is already reserved (within the transaction, this is the authoritative check)
     const existing = db.query("SELECT 1 FROM reservations WHERE seat_id = ? AND status = 'confirmed' LIMIT 1").get(seatId)
     if (existing) {
       db.exec('ROLLBACK')
