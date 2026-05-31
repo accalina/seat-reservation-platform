@@ -4,7 +4,7 @@ import { cookie } from '@elysiajs/cookie'
 import { env } from './utils/env'
 import { logger } from './utils/logger'
 import { requestLogger } from './middleware/logger'
-import { authRoutes } from './routes/auth'
+import { publicAuthRoutes, protectedAuthRoutes } from './routes/auth'
 import { seatsRoutes } from './routes/seats'
 import { paymentRoutes } from './routes/payment'
 import { reservationRoutes } from './routes/reservation'
@@ -20,7 +20,8 @@ const app = new Elysia()
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
       }))
-      .use(authRoutes)
+      .use(publicAuthRoutes)
+      .use(protectedAuthRoutes)
       .use(seatsRoutes)
       .use(paymentRoutes)
       .use(reservationRoutes)
