@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
     "db:migrate": "bun run src/db/migrate.ts",
     "db:seed": "bun run src/db/seed.ts",
     "db:setup": "bun run src/db/migrate.ts && bun run src/db/seed.ts",
@@ -28,5 +31,15 @@
     "elysia-rate-limit": "^4.6.2",
     "pino": "^10.3.1",
     "zod": "^4.4.3"
+  },
+  "test": {
+    "coverage": {
+      "include": ["src/**/*.ts"],
+      "exclude": ["src/db/migrate.ts", "src/db/seed.ts"],
+      "thresholds": {
+        "lines": 80,
+        "functions": 80
+      }
+    }
   }
 }
