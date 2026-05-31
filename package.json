@@ -1,0 +1,15 @@
+{
+  "name": "seat-reservation-platform",
+  "private": true,
+  "scripts": {
+    "install:all": "cd backend && bun install && cd ../frontend && bun install",
+    "dev": "concurrently -n backend,frontend -c blue,green \"cd backend && bun run --watch src/index.ts\" \"cd frontend && bun run dev\"",
+    "dev:backend": "cd backend && bun run --watch src/index.ts",
+    "dev:frontend": "cd frontend && bun run dev",
+    "db:setup": "cd backend && bun run src/db/migrate.ts && bun run src/db/seed.ts",
+    "db:reset": "cd backend && rm -f data/seat-reservation.db && bun run src/db/migrate.ts && bun run src/db/seed.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.0"
+  }
+}
