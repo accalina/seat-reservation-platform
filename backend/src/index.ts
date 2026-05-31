@@ -28,7 +28,7 @@ const app = new Elysia()
   )
   .onError(({ code, error, set }) => {
     logger.error({ code, error: String(error) })
-    if (code === 'NOT_FOUND' || code === 404) {
+    if (code === 404) {
       set.status = 404
       return { error: 'Not found' }
     }

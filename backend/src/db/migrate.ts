@@ -72,4 +72,26 @@ applyMigration('002_add_indexes', `
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 `)
 
+// Migration 003: Add payment tables for idempotency + audit
+applyMigration('003_add_payment_tables', `
+  CREATE TABLE IF NOT EXISTS payments (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    seat_id INTEGER NOT NULL REFERENCES seats(id),
+    status TEXT NOT NULL,
+    amount INTEGER NOT NULL DEFAULT 1000,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+
+  CREATE TABLE IF NOT EXISTS payment_idempotency (
+    key TEXT PRIMARY KEY,
+    response TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+  CREATE INDEX IF NOT EXISTS idx_payments_seat_id ON payments(seat_id);
+  CREATE INDEX IF NOT EXISTS idx_payment_idempotency_created ON payment_idempotency(created_at);
+`)
+
 console.log('✅ Migration complete: all tables and indexes created')
